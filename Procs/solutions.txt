@@ -1,0 +1,3259 @@
+﻿1 СЗадачи 1-го уровня.	
+Правила:
+Написание кода: без интервальный Bahnschrift. 
+Оформление:
+Пишем «Решение от ФИО: …»  Именовать нужно, чтобы люди могли указать тебе на ошибку или что-то спросить
+Код, который вы пишите, тестируйте, особенно если он написан GPT. Если нет возможности проверить, то пишите, что тест не был проведен. Напоминаю, мы пишем на 64-разрядном NASM.
+Поскольку файл имеет открытый доступ, то бронируйте вопросы написав «Решение от ФИО: …», на которые вы отвечаете. Чтобы не было конфликта у WORD. 
+Всего доброго и спасибо за участие в составлении в этом файле.
+
+
+
+1.1 Написать процедуру поиска элемента в неупорядоченном массиве. 
+Параметры: 
+RDI – указатель на массив; 
+RSI – количество элементов в массиве; 
+DL – искомое значение; 
+Возврат: RAX – адрес искомого элемента. 
+Решение от Алексеевой А. О.
+section .text
+    global find
+
+find:
+    xor rcx, rcx
+ 
+    loop:
+    cmp rcx, rsi
+    je not_find
+    mov r8b, [rdi + rcx]
+    cmp r8b, dl 
+    je exit 
+    inc rcx 
+    jmp loop 
+    exit: 
+    mov rax, rdi 
+    add rax, rcx 
+    ret
+    not_find:
+    mov rax, -1 
+    ret
+
+
+
+
+
+
+Запуск:
+#include <stdio.h> 
+#include <stdint.h>
+
+extern int* find(int8_t*, int64_t, uint8_t);
+
+int main(){
+    int8_t arr[] = {2, 1, 0, 4, 3, 7, 9};
+    uint8_t a = *find(arr, 7, 3);
+
+    printf("%d\n", a);
+    return 0;
+}
+
+
+
+1.2 Написать процедуру замены элементов больше заданного в массиве на заданное значение. 
+Параметры: 
+RDI – указатель на массив; 
+RSI – количество элементов в массиве; 
+DL – заданное значение. 
+Решение от ФИО: Дементьев Владимир Николаевич
+	section .text
+global replaceElements
+; Процедура замены элементов в массиве
+; Входные параметры:
+;   RDI - указатель на массив
+;   RSI - количество элементов в массиве
+;   DL  - заданное значение
+;   RCX - значение, на которое нужно заменить элементы, большие DL
+replaceElements:
+    cmp rsi, 0        ; Проверка на нулевое количество элементов
+    jz  .end          ; Если массив пуст, завершаем выполнение
+    mov rcx, 0        ; Значение, на которое будем заменять элементы, большие DL
+    mov rax, rdi      ; rax - копия указателя на массив
+.replace_loop:
+    cmp dword [rax], edx      ; Сравнение текущего элемента с DL
+    jbe .skip_replace         ; Пропустить замену, если элемент не больше DL
+    mov dword [rax], ecx      ; Заменить текущий элемент на новое значение
+.skip_replace:
+    add rax, 4                ; Переход к следующему элементу в массиве
+    dec rsi                   ; Уменьшить счетчик элементов
+    jnz .replace_loop         ; Повторить цикл, если не все элементы обработаны
+.end:
+    ret
+Вызов процедуры:
+	#include <stdio.h> 
+extern void replaceElements(int* array, int count, int threshold);
+int main() {
+    int arr[] = {1, 5, 7, 3, 9, 2, 8, 6};
+    int count = sizeof(arr) / sizeof(arr[0]);
+    int threshold = 4;
+    printf("Original array: ");
+    for (int i = 0; i < count; i++) {
+        printf("%d ", arr[i]);
+    }
+    replaceElements(arr, count, threshold);
+    printf("\nModified array: ");
+    for (int i = 0; i < count; i++) {
+        printf("%d ", arr[i]);
+    }
+    return 0;
+}
+Как компилировать:
+	nasm -felf64 test.asm -o test.o
+gcc -no-pie -o test test.o main.c
+./test
+
+1.3 Написать процедуру замены элементов меньше заданного в массиве на заданное значение. 
+Параметры: 
+RDI – указатель на массив; 
+RSI – количество элементов в массиве; 
+DL – заданное значение. 
+Решение от ФИО: Дементьев Владимир Николаевич
+	section .text
+global replaceElements
+; Процедура замены элементов в массиве
+; Входные параметры:
+;   RDI - указатель на массив
+;   RSI - количество элементов в массиве
+;   DL  - заданное значение
+replaceElements:
+    cmp rsi, 0        ; Проверка на нулевое количество элементов
+    jz  .end          ; Если массив пуст, завершаем выполнени
+    mov rax, rdi      ; rax - копия указателя на массив
+.replace_loop:
+    cmp dword [rax], edx      ; Сравнение текущего элемента с DL
+    jge .skip_replace         ; Пропустить замену, если элемент не меньше DL
+    mov dword [rax], edx      ; Заменить текущий элемент на новое значение
+.skip_replace:
+    add rax, 4                ; Переход к следующему элементу в массиве
+    dec rsi                   ; Уменьшить счетчик элементов
+    jnz .replace_loop         ; Повторить цикл, если не все элементы обработаны
+.end:
+    ret
+Вызов функции и как компилировать написано в 1.2!!!
+1.4 Написать процедуру выделения токена из ASCIIZ-строки. Ограничителями являются: пробел или возврат каретки. Вернуть полученный токен в виде ASCIIZ-строки. При этом вернуть указатель на остаток строки после токена. 
+Параметры: 
+RDI – указатель на исходную строку (заканчивающуюся 0); 
+RSI – указатель на строку, в которую помещается токен; 
+Возврат: RAX – указатель на оставшуюся строку. 
+Решение от Осипов Д.Д.:
+Если я правильно понял, что тут задумывалось, то вот простыми словами:
+Идем по строке, копируя символы, который нам попадаются в rsi, как только натыкаемся на 0x20 (пробел) или 0x0d (возврат каретки), останавливаемся сохраняем адрес, где мы находимся, в rax
+section .data
+    text db "Hello,fucking world", 0xa, 0
+
+section .bss
+    token resb 30
+
+section .text
+    global _start
+
+_start:
+    mov rdi, text
+    mov rsi, token
+    call get_tocken
+
+    call print_text
+
+    jmp exit
+
+get_tocken:
+push rcx
+push rbp
+mov rbp, rsp
+
+    mov rcx, 0
+    for:
+
+        cmp byte [rdi+rcx], 0x20
+        je end_for
+        cmp byte [rdi+rcx], 0xd
+        je end_for
+
+        mov al, byte [rdi+rcx]
+        mov byte [rsi+rcx], al
+
+    inc rcx
+    jmp for
+    end_for:
+        mov rax, rdi
+        add rax, rcx
+        inc rax
+
+mov rsp, rbp
+pop rbp
+pop rcx
+ret
+
+print_text:
+    mov rdx, 0
+    for_text:
+        cmp byte [rax+rdx], 0
+        je end_for_text
+        ;cmp byte [rax+rdx], 0xd
+        ;je end_for
+    inc rdx
+    jmp for_text
+    end_for_text:
+
+    mov rcx, rax
+    mov rax, 4
+    mov rbx, 1
+    int 0x80
+ret
+
+exit:
+    mov eax, 60
+    xor edi, edi
+    syscall
+
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+1.5 Написать процедуру замены в ASCIIZ-строке всех точек на запятые и наоборот. 
+Параметры: 
+RDI – указатель на строку. 
+Решене от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+replace:
+push rbp
+mov rbp, rsp
+push rdi
+.m:
+cmp byte [rdi], 0x00
+je .ret
+cmp byte [rdi], ','
+je .comma
+cmp byte [rdi], '.'
+jne .next
+mov byte [rdi], ','
+jmp .next
+.comma:
+mov byte [rdi], '.'
+.next:
+inc rdi
+jmp .m
+.ret:	
+pop rdi
+pop rbp
+ret
+
+1.6  Дана подстановка. Реализовать процедуру простой замены текста по подстановке. 
+Параметры: 
+RDI – адрес текста; 
+RSI – адрес подстановки; 
+RDX – размер текста. 
+Решение от Осипова Д.Д.:
+section .data
+    text db 'hello, my own world, hihihi', 0xa, 0
+    text_len equ $-text
+    lookup db 'o', 'O', 'h', 'H', 0
+    lookup_len equ $-lookup
+
+section .text
+    global _start
+
+_start:
+
+    mov rdi, text
+    mov rsi, lookup
+    mov rdx, text_len
+    call print_text
+    call replace
+    call print_text
+
+    jmp exit
+
+; Начало нужной процедуры
+replace:
+push rax ; сохраняем в стеке регистры
+push rcx
+push rbp
+mov rbp, rsp
+
+    mov rcx, 0
+    for_text: ; начинаем идти по строке
+    push rdx
+
+        mov al, byte[rdi+rcx] ; символ на котором мы находимся
+
+        mov rdx, 0
+        start_lookup: ; начинаем идти по подстановке
+
+            cmp al, byte [rsi+rdx] ; проверяем совпадают ли символы
+            je find_symbol
+
+
+        add rdx, 2 ; переходим на следующую пару подстановки
+        cmp byte [rsi+rdx], 0 ; проверяем на конец подстановки
+        jne start_lookup
+
+        end_lookup:
+
+
+    pop rdx
+    inc rcx
+    cmp rcx, rdx
+    jne for_text
+
+mov rsp, rbp
+pop rbp
+pop rcx
+pop rax
+ret
+
+
+find_symbol:
+    mov ah, byte [rsi+rdx+1]
+    mov byte[rdi+rcx], ah ; заменяем символ
+    jmp end_lookup
+
+; Конец
+
+
+
+print_text: ; Вывод строки
+push rax
+push rbx
+push rcx
+push rdx
+push rbp
+mov rbp, rsp
+
+    mov rax, 4   ; sys_write system call number
+    mov rbx, 1   ; file descriptor for stdout
+    mov rcx, text ; address of the message to be printed
+    mov rdx, text_len ; length of the message
+    int 0x80
+
+mov rsp, rbp
+pop rbp
+pop rdx
+pop rcx
+pop rbx
+pop rax
+ret
+
+exit:
+mov eax, 60
+xor edi, edi
+syscall
+
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+
+1.7 Написать процедуру сложения цифр двух байтов по модулю 16. В каждом байте содержится 2 шестнадцатеричные цифры. 
+Параметры: 
+BL – первое число; 
+BH – второе число;
+Возврат: AL – результат сложения 
+Решение от Осипова Д.Д.:
+main.c:
+#include <stdio.h>
+#include <stdlib.h>
+
+int add_numbers(int a, int b);
+
+int main(){
+    int a = 0x12;
+    int b = 0x24;
+    printf("%d\n", add_numbers(a, b));    
+
+    return 0;
+}
+
+asm.asm:
+section .text
+    global add_numbers
+
+add_numbers:
+push rbx
+    mov rax, rdi
+    mov bl, al
+    mov rax, rsi
+    mov bh, al
+    call add_numbers_start
+pop rbx
+ret
+
+
+add_numbers_start:      
+    mov al, bl
+    and al, 0xF
+    shr bl, 4
+    add al, bl
+    mov bl, bh
+    and bl, 0xF
+    add al, bl
+    shr bh, 4
+    add al, bh
+    and al, 0xF
+ret
+Запуск:
+nasm -f elf64 asm.asm
+gcc -no-pie main.c asm.o
+./a.out
+1.8 Написать процедуру сложения цифр двух байтов по модулю 8. В каждом байте содержится 3 восьмеричных цифры. 
+Параметры: 
+DIL – первое число; 
+SIL – второе число 
+Возврат: AL – результат сложения 
+Решение Дементьев В.Н.:
+	section .text
+    global add_mod8
+add_mod8:
+    push rbp
+    mov rbp, rsp
+    movzx rax, dil   ; dil - первое число
+    movzx rbx, sil   ; sil - второе число
+    add rax, rbx
+    cmp rax, 8
+    jl no_overflow
+    sub rax, 8
+no_overflow:
+    pop rbp
+    ret
+Вызов функции:
+#include <stdio.h>
+extern unsigned char add_mod8(unsigned char dil, unsigned char sil);
+int main() {
+    unsigned char result;
+    unsigned char first_number = 543;  
+    unsigned char second_number = 365; 
+    result = add_mod8(first_number, second_number);
+    printf("Result: %d\n", result);
+    return 0;
+}
+Компиляция:
+	nasm -felf64 add_mod8.asm -o add_mod8.o
+	gcc -c main.c -o main.o
+gcc add_mod8.o main.o -o my_program
+./my_program
+1.9 Написать процедуру получения обратной подстановки. 
+Параметры: 
+RDI – адрес прямой подстановки; 
+RSI – адрес результирующей подстановки; 
+RDX – порядок подстановки 
+Решение от Осипов Д.Д.:
+section .data
+    lookup db 'o', 'O', 'a', 'A', 'c', 'C', 0
+    lookup_rev db 0
+
+section .text
+    global _start
+
+_start:
+    mov rcx, lookup
+    ;call print_lookup 
+    mov rdi, lookup
+    mov rsi, lookup_rev
+    call reverse
+    mov rcx, lookup_rev
+    call print_lookup
+    jmp exit
+
+
+reverse:
+push rax ; сохранение в стеке используемых регистров
+push rdx
+push rbp
+mov rbp, rsp
+
+    mov rdx, 0
+    for_l: ; начинаем двигаться по подстановке
+        mov al, byte [rdi+rdx] ; берем два байта из исходной подстановки
+        mov ah, byte [rdi+rdx+1]
+        mov byte [rsi+rdx], ah ; отправляем их в обратную, поменяв местами
+        mov byte [rsi+rdx+1], al
+    add rdx, 2 ; переходим на следующие два байта
+    cmp byte [rcx+rdx], 0 ; проверка конца подстановки 
+    jne for_l
+    mov byte [rsi+rdx], 0 ; добавляем конец для новой подстановки 
+
+mov rsp, rbp
+pop rbp
+pop rdx
+pop rax
+ret
+
+
+print_lookup:
+push rbp
+mov rbp, rsp
+
+    mov rdx, 0
+    for:
+    inc rdx
+    cmp byte [rcx+rdx], 0
+    jne for
+
+    mov rax, 4   ; sys_write system call number
+    mov rbx, 1   ; file descriptor for stdout
+    int 0x80
+
+
+
+mov rsp, rbp
+pop rbp
+ret
+
+exit:
+    mov eax, 60
+    xor edi, edi
+    syscall
+
+
+
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+
+1.10 Написать процедуру перемножения подстановок. 
+Параметры: 
+RDI – адрес первой подстановки; 
+RSI – адрес второй подстановки; 
+RDX – порядок подстановки; 
+RCX – адрес результата. 
+Решение от Осипов Д.Д.:
+section .data
+    lookup1 db 'a', 'A', 'b', 'B', 'c', 'C', 0
+    lookup2 db 'A', 'a', 'B', 'b', 'C', 'c', 0
+    lookup3 db 0
+
+section .text
+    global _start
+
+_start:
+    mov rdi, lookup1
+    mov rsi, lookup2
+    mov rcx, lookup3
+    call mult_lu
+    call print_lookup
+
+    jmp exit
+
+mult_lu:
+push rax
+push rdx
+push rbp
+mov rbp, rsp
+
+    mov rdx, 0
+    for_l1:
+
+        mov al, byte [rdi+rdx]
+        mov byte [rcx+rdx], al
+        mov al, byte [rdi+rdx+1]
+        call get_img
+        mov byte [rcx+rdx+1], ah
+
+    add rdx, 2
+    cmp byte [rdi+rdx], 0
+    jne for_l1
+
+
+mov rsp, rbp
+pop rbp
+pop rdx
+pop rax
+ret
+
+get_img:
+push rdx
+push rbp
+mov rbp, rsp
+
+    mov rdx, 0
+    for_l2:
+
+        mov ah, byte [rsi+rdx]
+        cmp ah, al
+        je end_l2
+        ;call print_lookup
+
+    add rdx, 2
+    cmp byte [rsi+rdx], 0
+    jne for_l2
+    end_l2:
+        mov ah, byte [rsi+rdx+1]
+
+mov rsp, rbp
+pop rbp
+pop rdx
+ret
+
+
+print_lookup:
+push rbp
+mov rbp, rsp
+
+    mov rdx, 0
+    for:
+    inc rdx
+    cmp byte [rcx+rdx], 0
+    jne for
+
+    mov rax, 4   ; sys_write system call number
+    mov rbx, 1   ; file descriptor for stdout
+    int 0x80
+
+
+
+mov rsp, rbp
+pop rbp
+ret
+
+exit:
+    mov eax, 60
+    xor edi, edi
+    syscall
+
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+
+1.11 Написать процедуру проверки памяти в сегменте неинициализированных данных (запись 00h с проверкой и запись 0FFh с проверкой). 
+Параметры: 
+RDI – адрес сегмента неинициализированных данных; 
+RSI – размер сегмента. 
+Решение от Алексеевой Алёны Олеговны:
+section .data
+    uninitialized_message db "Uninitialized data found: X", 0
+    initialized_message db "No uninitialized data found.", 0
+    message_length equ $ - uninitialized_message
+    
+section .bss
+     uninitialized_data resb 100
+ 
+section .text
+    global _start
+ 
+check_memory:
+    ; Входные параметры:
+    ;   RDI - адрес сегмента неинициализированных данных
+    ;   RSI - размер сегмента
+ 
+    ; Инициализация счетчика
+    mov rcx, rsi
+    mov al, 00h
+    rep stosb  ; Заполняем всю область сегмента нулями
+ 
+    mov rcx, rsi
+    mov al, 00h
+    repne scasb  ; Ищем первое несовпадение с 00h
+    jz  check_FF  ; Если все байты равны 00h, переходим к проверке 0FFh
+ 
+    ; Если не все байты равны 00h, значит есть неинициализированные данные
+    mov rax, 1        
+    mov rdi, 1        
+    lea rsi, [uninitialized_message] 
+    mov rdx, message_length 
+    syscall
+ 
+check_FF:
+    ; Повторно инициализируем счетчик
+    mov rcx, rsi
+    ; Проверяем область на заполнение 0FFh
+    mov al, 0FFh
+    repne scasb  ; Ищем первое несовпадение с 0FFh
+    jz  no_uninitialized_data  ; Если все байты равны 0FFh, значит область полностью заполнена
+ 
+    ; Если есть хотя бы один байт, не равный 0FFh, это может также считаться неинициализированной областью
+    mov rax, 1        
+    mov rdi, 1        
+    lea rsi, [uninitialized_message] 
+    mov rdx, message_length 
+    syscall
+    jmp done
+ 
+no_uninitialized_data:
+    ; Если не обнаружено неинициализированных данных, выводим другое сообщение
+    mov rax, 1        
+    mov rdi, 1        
+    lea rsi, [initialized_message] 
+    mov rdx, message_length 
+    syscall
+ 
+done:
+    ret
+ 
+_start:
+    mov rdi, uninitialized_data   
+    mov rsi, 100                  
+ 
+    call check_memory
+ 
+    mov rax, 60       
+    xor rdi, rdi      
+    syscall
+ 
+ 
+    
+
+1.12 Написать процедуру порождения двоично-отраженного кода Грея для данного числа. 
+Параметры: 
+RDI – число; 
+Возврат: RAX – код Грея.
+Код Грея получается по правилу  
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+gray_code: 
+push rbp
+mov rbp, rsp
+push rdi
+      mov rax, rdi 
+      shr rdi, 1 
+      xor rax, rdi
+pop rdi
+pop rbp 
+      ret
+
+1.13 Написать процедуру, производящую следующие действия: 
+Параметры: 
+RDI – адрес исходного массива; 
+RDX – n; 
+RSI – адрес результирующего массива;
+Элементы – двухбайтовые числа без знака
+Решение от ФИО: Навощик Кирилл Алексеевич
+;in:	rdi - frst
+;		rsi - res
+;		rdx - n
+calc:
+push rbp
+mov rbp, rsp
+ 
+push rax
+push rbx
+push rcx
+ 
+mov rbx, 127
+mov rcx, rdx
+.m:
+test rcx, rcx
+jz .ret
+ 
+mov ax, word [rdi + rcx * 2 - 2]
+mul bx
+mov word [rsi + rcx * 2 - 2], ax
+dec rcx
+jmp .m
+ 
+.ret:
+pop rcx
+pop rbx
+pop rax
+pop rbp
+ret
+1.14 Написать процедуру проверки подстановки порядка n на полноцикловость. 
+Параметры: 
+RDI – адрес подстановки; 
+RSI – порядок подстановки;
+Возврат: RAX=0 – подстановка полноцикловая; 
+RAX=-1 – подстановка не полноцикловая;
+Решение от Осипов Д.Д.:
+section .data
+    lookup db 1, 5, 2, 4, 3, 1, 4, 2, 5, 3
+    len equ 5
+    yes db 'yes', 0xa, 0
+    no db 'no', 0xa, 0
+
+section .text
+    global _start
+
+_start:
+    mov rdi, lookup
+    mov rsi, len
+    call check
+    cmp rax, 0
+    je print_yes
+
+    cmp rax, -1
+    je print_no
+
+    jmp exit
+
+check:
+push rbx
+push rdx
+push rcx
+push rbp
+mov rbp, rsp
+
+    mov rax, -1 
+    mov bl, byte [rdi] ; Начальный элемент
+    mov bh, byte [rdi+1] ; Текущий элемент
+    cmp bl, bh
+    je exit_check
+    mov rdx, 2
+
+    null_c:
+    mov rcx, 0
+    while:
+
+        cmp bh, byte [rdi+2*rcx]
+        je find_el
+        ret_find_el:
+        cmp bh, bl
+        je exit_while
+
+
+    inc rcx
+    cmp rcx, rsi
+    je null_c 
+    jmp while
+
+    exit_while:
+    dec rdx
+    cmp rdx, rsi
+    jne exit_check
+    mov rax, 0
+
+exit_check:
+mov rsp, rbp
+pop rbp
+pop rcx
+pop rdx
+pop rbx
+ret
+
+find_el:
+    inc rdx
+    mov bh, byte [rdi+2*rcx+1]
+    jmp ret_find_el
+
+
+
+
+print_yes:
+    mov rax, 4
+    mov rbx, 1
+    mov rcx, yes
+    mov rdx, 5
+    int 0x80
+
+    jmp exit
+
+print_no:
+    mov rax, 4
+    mov rbx, 1
+    mov rcx, no
+    mov rdx, 4
+    int 0x80
+
+    jmp exit
+
+exit:
+    mov eax, 60
+    xor edi, edi
+    syscall
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+
+1.15 Даны две последовательности 				. Написать процедуру сложения двух последовательностей по модулю 8. 
+Параметры: 
+RDI – адрес первой последовательности; 
+RSI – адрес второй последовательности; 
+RDX – адрес результата; 
+RCX – размер последовательности;
+Решение от ФИО: Навощик Кирилл Алексеевич
+;in: 	rdi - frst
+;		rsi - scnd
+;		rdx - res
+;		rcx - size
+add:
+push rbp
+mov rbp, rsp
+push rax
+push rcx
+
+test rcx, rcx
+Jz .ret 
+
+.m:
+dec rcx
+mov al, byte [rdi + rcx]
+add al, byte [rsi + rcx]
+and al, 7
+mov byte [rdx + rcx], al
+ 
+test rcx, rcx
+jnz .m
+ 
+.ret:
+pop rcx
+pop rax
+pop rbp
+ret
+1.16 Даны две последовательности  . Написать процедуру сложения двух последовательностей по модулю 10. 
+Параметры: 
+RDI – адрес первой последовательности; 
+RSI – адрес второй последовательности; 
+RDX – адрес результата; 
+RCX – размер последовательности;
+Решение от ФИО: Навощик Кирилл Алексеевич
+;in: 	rdi - frst
+;		rsi - scnd
+;		rdx - res
+;		rcx - size
+add:
+push rbp
+mov rbp, rsp
+push rax
+push rbx
+push rcx
+
+test rcx, rcx
+Jz .ret
+ 
+.m:
+dec rcx
+mov al, byte [rdi + rcx]
+add al, byte [rsi + rcx]
+ 
+sub al, 10
+sbb bl, bl
+and bl, 10
+add al, bl
+ 
+mov byte [rdx + rcx], al
+ 
+test rcx, rcx
+jnz .m
+ 
+.ret:
+pop rcx
+pop rbx
+pop rax
+pop rbp
+ret
+1.17 Написать процедуру сложения двух 128-битных чисел. 
+Параметры: 
+RDI – адрес первого числа; 
+RSI – адрес второго числа; 
+RDX – адрес результата;
+Решение от ФИО: Навощик Кирилл Алексеевич
+Числа хранятся в памяти так: <младшие 64 бит>, <старшие 64 бит>, например: dq 0xdeadbeefcafebabe, 0x1234567890123456,  что соответствует числу 0x1234567890123456deadbeefcafebabe.
+;in:    rdi - frst
+;       rsi - scnd
+;       rdx - res
+add:
+    push rbp
+    mov rbp, rsp
+ 
+    push rax
+    push rbx
+    push rdi
+    push rsi
+ 
+    mov rax, qword [rdi]        ;   low_part1
+    mov rdi, qword [rdi + 8]    ;   high_part1
+    mov rbx, qword [rsi]        ;   low_part2
+    mov rsi, qword [rsi + 8]    ;   high_part2
+ 
+    add rax, rbx
+    adc rdi, rsi
+ 
+    mov qword [rdx], rax
+    mov qword [rdx + 8], rdi
+ 
+    pop rsi
+    pop rdi
+    pop rbx
+    pop rax
+    pop rbp
+    ret
+1.18 Дано слово из 8 букв. Написать процедуру получения хеш-функции этого слова по алгоритму
+
+Параметры: 
+RDI – адрес слова 
+Возврат: RAX – значение функции
+Решение от ФИО: Ковалев Артем Сергеевич
+
+section .data
+stroka db "AABOOBAA", 0
+section .text
+global _start
+_start:
+mov rdi, stroka
+call hash 
+call exit
+
+hash:
+push rbp
+mov rbp, rsp 
+push rcx
+push rdx
+push r8
+push r9  
+ 
+xor rax, rax 
+xor rcx, rcx 
+xor rdx, rdx 
+xor r8, r8
+xor r9, r9
+ 
+.for_loop:
+cmp rcx, 8
+je .end
+mov r8, 8
+sub r8, rcx
+mov rdx, 2
+ 
+.powloop:
+cmp r8, 1
+je .retpow
+mov rax, 2
+mul rdx
+mov rdx, rax
+dec r8
+jmp .powloop
+ 
+.retpow:
+xor rax, rax 
+mov al, byte[rdi + rcx] 
+mul rdx 
+add r9, rax
+inc rcx  
+jmp .for_loop
+ 
+ 
+.end:
+mov rax, r9 
+pop r9
+pop r8
+pop rdx
+pop rcx
+pop rbp
+ret
+
+ 
+ 
+exit:
+mov rax, 60
+syscall
+
+
+nasm –f elf_x86_64 task.asm
+ld –m elf_x86_64 task.o
+
+
+1.19 Написать процедуру нахождения следа байтовой квадратной матрицы
+Параметры: RDI – адрес матрицы; 
+RSI – размер матрицы 
+Возврат: EAX – след матрицы
+Решение от Осипов Д.Д.:
+section .data
+    matrix db 1, 0, 0, 0, 1, 0, 0, 0, 1
+    len db 3
+    next_str db 0xa, 0
+
+section .bss
+    otv resb 2
+
+section .text
+    global _start
+
+_start:
+    mov rdi, matrix
+    mov al, byte[len]
+    mov rsi, rax
+    call get_trace
+
+
+    call print_otv
+
+    jmp exit
+
+get_trace:
+push rbx
+push rcx
+push rdi
+push rbp
+mov rbp, rsp
+    mov rax, 0
+    mov rbx, 0
+
+    mov rcx, 0
+    for_matrix:
+
+        mov bl, byte[rdi+rcx]
+        add rax, rbx
+        add rdi, rsi
+
+    inc rcx
+    cmp rcx, rsi
+    jne for_matrix
+    
+
+mov rsp, rbp
+pop rbp
+pop rdi
+pop rcx
+pop rbx
+ret
+
+
+print_otv:
+push rax
+push rbx
+push rcx
+push rdx
+    mov byte [otv], al
+    mov rax, 4
+    mov rbx, 1
+    mov rcx, otv
+    add byte [rcx], 0x30
+    mov rdx, 1
+    int 0x80
+    mov rax, 4
+    mov rbx, 1
+    mov rcx, next_str
+    mov rdx, 2
+    int 0x80
+pop rdx
+pop rcx
+pop rbx
+pop rax
+ret
+
+exit:
+    mov eax, 60
+    xor edi, edi
+    syscall
+
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+
+1.20 Написать процедуру подсчета количества ненулевых элементов байтовой квадратной матрицы 
+Параметры: 
+RDI – адрес матрицы; 
+RSI – размер матрицы 
+Возврат: RAX – количество ненулевых элементов
+Решение от ФИО: Корнев Дмитрий Александрович
+section .bss
+   string resb 64
+ 
+section .data
+   matrix db 1, 2, 3, 4, 2, 1, 0, 0, 3
+   size equ 3
+ 
+section .text
+   global _start
+ 
+itoa:
+    push r8
+    mov r8, 10
+    mov byte [string + 63], 0xa
+    mov rcx, string + 62
+    mov r9, string + 64
+.next:
+    mov rdx, 0
+    div r8
+    add dl, '0'
+    cmp dl, '9'
+    jbe .m1
+    add dl, 'A'-'0'-10
+.m1:
+    mov [rcx], dl
+    cmp rax, 0
+    je .end
+    dec rcx
+    jmp .next
+.end:
+    pop r8
+    sub r9, rcx
+    mov rdx, r9
+    ret
+ 
+nonzero_elements:
+    ;rdi - addr matrix
+    ;rsi - size of matrix
+    push rbp 
+    ;mov qword [rsp], rbp
+    ;add rsp, 8
+    mov rbp, rsp
+    push rsi
+    push rbx
+ 
+    mov rax, rsi 
+    mul rsi
+    mov rsi, rax
+    xor rax, rax
+    xor rbx, rbx
+ 
+.loop:
+    cmp rsi, rbx
+    je .end
+    cmp byte [rdi + rbx], 0
+    jne .nonzero
+ 
+.next:
+    inc rbx
+    jmp .loop 
+ 
+.nonzero:
+    inc rax
+    jmp .next
+ 
+.end:
+    pop rbx
+    pop rsi
+    pop rbp
+    ret 
+ 
+_start:
+    mov rdi, matrix
+    mov rsi, size
+    call nonzero_elements
+ 
+    call itoa
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, rcx
+    syscall
+ 
+    mov rax, 60
+    xor rdi, rdi
+    syscall
+
+1.21 Написать процедуру поиска наибольшего элемента в массиве двухбайтовых элементов (без знака) 
+Параметры: 
+RDI – адрес массива; 
+RSI – количество элементов 
+Возврат: RAX – наибольший элемент; RDI – адрес наибольшего элемента
+Решение от Алексеевой Алёны Олеговны:
+section .data
+    n equ 6
+    a db 1, 2, 3, 4, 5, 6
+    max db 0
+ 
+section .text
+    global main
+    extern printf
+ 
+main:
+    mov rdi, a        
+    mov rsi, n       
+    call find_max    
+
+    mov rax, 0
+    ret
+ 
+find_max:
+    mov rdx, n            
+    xor rcx, rcx          
+    movzx rax, byte [rdi] 
+ 
+for_loop:
+    cmp rcx, rdx           
+    je  end_loop           
+ 
+    movzx rbx, byte [rdi + rcx]  
+    cmp rbx, rax                  
+    jle  not_greater            
+    mov rax, rbx                 
+ 
+not_greater:
+    inc rcx                      
+    jmp for_loop                 
+ 
+end_loop:
+    mov rdi, format                
+    mov rsi, rax             
+    call printf                 
+    ret
+ 
+section .data
+    format db "%d", 10, 0
+
+
+Компилируем вот так
+
+
+1.22 Написать процедуру поиска наименьшего элемента в массиве двухбайтовых элементов (со знаком) 
+Параметры: 
+RDI – адрес массива; 
+RSI – количество элементов 
+Возврат: RAX – наименьший элемент; RDI – адрес наименьшего элемента
+Решение от Алексеевой Алёны Олеговны:
+section .data
+    n equ 6
+    a db 1, 2, 3, 4, 5, 6
+    min db 0
+ 
+section .text
+    global main
+    extern printf
+ 
+main:
+    mov rdi, a        
+    mov rsi, n       
+    call find_min    
+ 
+    mov rax, 0
+    ret
+ 
+find_min:
+    mov rdx, n            
+    xor rcx, rcx          
+    movzx rax, byte [rdi] 
+ 
+for_loop:
+    cmp rcx, rdx           
+    je  end_loop           
+ 
+    movzx rbx, byte [rdi + rcx]  
+    cmp rbx, rax                  
+    jge  not_smaller          
+    mov rax, rbx                 
+ 
+not_smaller:
+    inc rcx                      
+    jmp for_loop                 
+ 
+end_loop:
+    mov rdi, format                
+    mov rsi, rax             
+    call printf                 
+    ret
+ 
+section .data
+    format db "%d", 10, 0
+    
+Компилируем как в 1.21
+1.23 Написать процедуру определения частоты встречаемости букв в заданном тексте (текст – ASCIIZ-строка). 
+Параметры: RDI – адрес текста.
+Решение от ФИО: Кудрявцев Вячеслав Николаевич
+; rdi - начало ASCIIZ string
+; rax - количество букв в строке
+count_of_letters:
+push rcx
+xor rax, rax 		      ; количество букв
+xor rcx, rcx
+.for_loop:
+cmp byte [rdi + rcx], 0 ; сравниваем строку с последним символов ASCIIZ строки
+je .end
+cmp byte [rdi + rcx], 0x61 ; если символ >= 0x61 (‘a’)
+jge .check_lower
+cmp byte [rdi + rcx], 0x41 ; если символ >= 0x41 (‘A’)
+jge .check_capital 
+.inc_RCX:
+inc rcx			     ; переходим к след символу
+jmp .for_loop
+.check_lower:
+cmp byte [rdi + rcx], 0x7A ; если символ >= ‘a’ and <= ‘z’
+jg .inc_RCX
+inc rax
+jmp .inc_RCX
+.check_capital:
+cmp byte [rdi + rcx], 0x5A ; если символ >= ‘A’ and <= ‘Z’
+jg .inc_RCX
+inc rax
+jmp .inc_RCX
+.end:
+pop rcx
+ret
+
+Пускалка
+	section .data
+    string db "Hello 123123456 hahaHe00ooO", 0x0 
+section .bss
+    count_string resb 30
+ 
+section .text
+global _start
+ 
+_start:
+mov rdi, string
+call count_of_letters
+ 
+mov rdi, rax
+call itoa
+ 
+mov rax, 1
+mov rdi, 1
+mov rsi, rcx
+syscall
+ 
+mov rax, 60
+xor rdi, rdi
+syscall
+ 
+itoa:
+    push r8
+    mov r8, 10
+    mov byte [count_string + 29], 0x0a
+    mov rcx, count_string + 28
+    mov r9, count_string + 30
+    mov rax, rdi
+.next:
+    mov rdx, 0
+    div r8
+    add dl, '0'
+    cmp dl, '9'
+    jbe .m1
+    add dl, 'A'-'0'-10
+.m1:
+    mov [rcx], dl
+    cmp rax, 0
+    je .end
+    dec rcx
+    jmp .next
+.end:
+    pop r8
+    sub r9, rcx
+    mov rdx, r9
+    ret
+
+Запуск и компиляция
+
+1.24 Написать код, реализующий следующие действия				. Большие буквы — 2 байта, маленькие — 1 байт.
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+;in:
+;	di - A
+;	sil - a
+;	dl - b
+;out:
+;	ax - res
+do_ariph:
+push rbp
+mov rbp, rsp
+
+push rdx
+push rsi
+ 
+movzx ax, dil
+and al, 7
+and dl, sil
+xor al, dl
+ 
+pop rsi
+pop rdx
+pop rbp
+ret
+1.25 Написать код, реализующий следующие действия . Большие буквы – 2 байта, маленькие – 1 байт.
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+;in:
+;	di - A
+;	si - B
+;	dl - b
+;	r10b - c
+;out:
+;	al - res
+do_ariph:
+push rbp
+mov rbp, rsp
+ 
+push rbx
+ 
+movzx rax, dl
+xor ax, di
+ 
+movzx rbx, r10b
+xor bx, si
+ 
+or ax, bx
+and ax, 63
+pop rbx
+pop rbp
+ret
+1.26 Написать код, реализующий следующие действия . Большие буквы – 2 байта, маленькие – 1 байт.
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+;in:
+;	di - A
+;	sil - b
+;	dl - c
+;	r10b - d
+;out:
+;	al - res
+do_ariph:
+push rbp
+mov rbp, rsp
+ 
+push rcx
+push rbx
+ 
+movzx ax, sil
+add ax, di
+movzx bx, dl
+sub ax, bx
+mov cl, r10b
+shr ax, cl
+ 
+pop rbx
+pop rcx
+pop rbp
+ret
+1.27 Написать код, реализующий следующие действия 		. Большие буквы – 2 байта, маленькие – 1 байт. 
+Решение от ФИО: Корнев Дмитрий Александрович 
+section .bss
+    count_string resb 30
+ 
+section .data
+    A dw 1
+    b db 1
+    c db 1
+ 
+section .text
+    global _start
+ 
+itoa:
+    push r8
+    mov r8, 10
+    mov byte [count_string + 29], 0x0a
+    mov rcx, count_string + 28
+    mov r9, count_string + 30
+    ;mov rax, rdi
+.next:
+    mov rdx, 0
+    div r8
+    add dl, '0'
+    cmp dl, '9'
+    jbe .m1
+    add dl, 'A'-'0'-10
+.m1:
+    mov [rcx], dl
+    cmp rax, 0
+    je .end
+    dec rcx
+    jmp .next
+.end:
+    pop r8
+    sub r9, rcx
+    mov rdx, r9
+    ret
+ 
+_start:
+    mov word [A], 5
+    mov byte [b], 1
+    mov byte [c], 3
+ 
+    ;R = (A /\ (b \/ !A)) << c
+    push rbp
+    mov rbp, rsp
+    push rcx
+    movzx rax, byte  [b]
+    movzx rcx, word [A]
+    not rcx
+    or rax, rcx
+    not rcx
+    and rax, rcx
+    mov cl, byte [c]
+    shl al, cl
+    pop rcx
+    pop rbp
+ 
+    call itoa
+    mov rax, 1
+    mov rdx, 30
+    mov rdi, 1
+    mov rsi, count_string
+    syscall
+ 
+    mov rax, 60
+    xor rdi, rdi
+    syscall
+1.28  Написать код, реализующий следующие действия . Большие буквы – 2 байта, маленькие – 1 байт.
+Решение от ФИО: Кудрявцев Вячеслав Николаевич
+section .bss
+string_out resb 10
+ 
+section .data
+A dw 5
+B dw 4
+C dw 11
+c db 7
+ 
+section .text
+global _start
+ 
+_start:
+call func
+ 
+mov rdi, rax
+ 
+call itoa
+ 
+mov rdi, 1
+mov rsi, string_out
+mov rax, 1
+mov rdx, 10
+syscall
+ 
+mov rax, 60
+xor rdi, rdi
+syscall
+; R = C - (A or c) and B
+; A, B, C - 2 bytes : c - 1 byte
+; return rax
+func:
+push rbp 
+mov rbp, rsp 
+
+push rbx
+xor rax, rax
+xor rbx, rbx
+ 
+movzx rax, word [A]
+movzx rbx, byte [c]
+ 
+or rax, rbx ; (A v c)
+
+movzx rbx, word [B]
+and rax, rbx ; (A v c) ^ B
+movzx rbx, word [C]
+sub rbx, rax ; C - (A v c) ^ B
+ 
+mov rax, rbx
+ 
+pop rbx
+pop rbp
+ret
+
+itoa:
+push r8
+mov r8, 10
+    mov byte [string_out + 9], 0x0a
+    mov rcx, string_out + 8
+    mov r9, string_out + 10
+    mov rax, rdi
+.next:
+    mov rdx, 0
+    div r8
+    add dl, '0'
+    cmp dl, '9'
+    jbe .m1
+    add dl, 'A'-'0'-10
+.m1:
+    mov [rcx], dl
+    cmp rax, 0
+    je .end
+    dec rcx
+    jmp .next
+.end:
+pop r8
+    sub r9, rcx
+    mov rdx, r9
+    ret
+
+Запуск и компиляция
+
+1.29 Написать код, реализующий следующие действия . Большие буквы – 2 байта, маленькие – 1 байт.
+Решение от ФИО: Кудрявцев Вячеслав Николаевич
+section .bss
+string_out resb 10
+ 
+section .data
+a db 5
+C dw 11
+D dw 24
+ 
+section .text
+global _start
+ 
+_start:
+call func
+
+call itoa
+ 
+mov rdi, 1
+mov rsi, string_out
+mov rax, 1
+mov rdx, 10
+syscall
+ 
+mov rax, 60
+mov rdi, 0
+syscall
+ 
+; R = a and (C + D) - a
+; ret RAX
+func:
+push rbp
+mov rbp, rsp
+push rbx
+xor rbx, rbx
+xor rax, rax
+ 
+mov ax, word [C]
+mov bx, word [D]
+add ax, bx ; C + D
+mov rbx, 0
+mov bl, byte [a]
+and ax, bx ; a and (C + D)
+mov rbx, 0
+mov bl, byte [a]
+sub al, bl ; a and (C + D) - a
+ 
+pop rbx
+pop rbp
+ret 
+itoa:
+push r8
+mov r8, 10
+    mov byte [string_out + 9], 0x0a
+    mov rcx, string_out + 8
+.next:
+    mov rdx, 0
+    div r8
+    add dl, '0'
+    cmp dl, '9'
+    jbe .m1
+    add dl, 'A'-'0'-10
+.m1:
+    mov [rcx], dl
+    cmp rax, 0
+    je .end
+    dec rcx
+    jmp .next
+.end:
+pop r8
+    ret
+
+Компиляция и запуск
+
+1.30 Написать код, реализующий следующие действия . Большие буквы – 2 байта, маленькие – 1 байт. 
+Решение от ФИО: Кудрявцев Вячеслав Николаевич
+section .bss
+string_out
+ 
+section .data
+A dw 5
+a db 4
+b db 11
+C dw 7
+ 
+section .text
+global _start
+ 
+_start:
+call func
+call itoa
+ 
+mov rdi, 1
+mov rsi, string_out
+mov rax, 1
+mov rdx, 10
+syscall
+ 
+mov rax, 60
+xor rdi, rdi
+syscall
+; R = (A % 256 - a) + (b - C % 256)
+; ret rax
+func:
+push rbp
+mov rbp, rsp
+ 
+push rbx
+ 
+movzx rax, word [A]
+movzx rbx, byte [a]
+ 
+and rax, 0xFF ; A % 256
+sub rax, rbx  ; A % 256 - a
+ 
+movzx rbx, byte [b]
+add rax, rbx  ; A % 256 - a + b
+ 
+movzx rbx, word [C]
+and rbx, 0xFF ; C % 256
+ 
+sub rax, rbx  ; A % 256 - a + b - C % 256
+ 
+pop rbx
+pop rbp
+ret
+ 
+itoa:
+    push rbp
+    mov rbp, rsp
+    push r8
+
+    mov r8, 10
+    mov byte [string_out + 9], 0x0a
+    mov rcx, string_out + 8
+.next:
+    mov rdx, 0
+    div r8
+    add dl, '0'
+    cmp dl, '9'
+    jbe .m1
+    add dl, 'A'-'0'-10
+.m1:
+    mov [rcx], dl
+    cmp rax, 0
+    je .end
+    dec rcx
+    jmp .next
+.end:
+    pop r8
+    pop rbp
+    ret
+Запуск и компиляция
+
+1.31 Написать код, реализующий следующие действия . Большие буквы – 2 байта, маленькие – 1 байт. 
+Решение от ФИО: Кудрявцев Вячеслав Николаевич
+section .bss
+string_out resb 10
+ 
+section .data
+a db 26
+c db 52
+d db 69
+C dw 111
+D dw 150
+ 
+section .text
+global _start
+ 
+_start:
+call func
+s1:
+call itoa
+s2:
+mov rdi, 1
+mov rsi, string_out
+mov rax, 1
+mov rdx, 10
+syscall
+ 
+mov rax, 60
+xor rdi, rdi
+syscall
+ 
+; R = a - (C or c + D and d) % 64
+; ret RAX
+func:
+push rbp
+mov rbp, rsp
+push rbx
+push rcx
+ 
+xor rax, rax
+xor rbx, rbx
+xor rcx, rcx
+ 
+mov ax, word [C]
+mov bl, byte [c]
+or rax, rbx   ; C or c
+ 
+mov bx, word [D]
+mov cl, byte [d]
+and bx, cx  ; D and d
+ 
+add rax, rbx  ; C or c + D and d
+and rax, 63 ; (C or c + D and d) % 64
+ 
+mov rbx, rax
+mov rax, 0
+mov al, byte [a]
+sub rax, rbx  ; a - (C or c + D and d) % 64
+ 
+pop rcx 
+pop rbx
+pop rbp
+ret
+ 
+itoa:
+push r8
+mov r8, 10
+mov byte [string_out + 9], 0x0a
+mov rcx, string_out + 8
+.next:
+mov rdx, 0
+div r8
+add dl, '0'
+cmp dl, '9'
+jbe .m1
+add dl, 'A'-'0'-10
+.m1:
+mov [rcx], dl
+cmp rax, 0
+je .end
+dec rcx
+jmp .next
+.end:
+pop r8
+ret
+
+Запуск и компиляция
+
+1.32 Написать код, реализующий следующие действия . Большие буквы – 2 байта, маленькие – 1 байт. 
+Решение Лешану С.А.:
+section .data
+    ; объявление переменных
+    a db 0xAA ; пример значения a (1 байт)
+    b db 0xBB ; пример значения b (1 байт)
+    c dw 0xCC ; пример значения c (2 байт)
+    d dw 0xDD ; пример значения d (2 байта)
+    r db 0 ; результат (4 байта)
+section .text
+    global _start
+
+_start:
+    ; загрузка значений a, b, c, d в регистры
+    movzx rax, byte [a]
+    movzx rdi, byte [b]
+    movzx rsi, word [c]
+    movzx rdx, word [d]
+    ; вычисление выражения r=(a ∨ b - d ∧ c) mod 32
+    or rax, rdi ; a ∨ b
+    and rdx, rsi  ; d ∧ c
+    sub rax, rdx ; (a ∨ b) - (d ∧ c)
+    and rax, 0x1F ; применение операции mod 32
+    ; сохранение результата в переменную r
+    mov [r], rax
+    ; ваш код продолжается здесь, если необходимо выполнить дополнительные действия
+    ; вывод значения r
+    mov rax, 1      ; системный вызов write
+    mov rdi, 1      ; файловый дескриптор (stdout)
+    mov rsi, r      ; указатель на строку (значение r)
+    mov rdx, 1     ; количество байт для вывода (4 байта int)
+    syscall       ; вызов ядра
+    ; завершение программы
+    mov rax, 60      ; системный вызов exit
+    xor rdi, rdi    ; код возврата 0
+    syscall       ; вызов ядра
+Запуск:
+nasm -f elf64 main.asm -o main.o
+ld main.o -o start
+./start | hexdump -C
+(ответ читается справа налево по байтам)
+1.33 Написать код, реализующий следующие действия . Большие буквы – 2 байта, маленькие – 1 байт. 
+Решение: Капустин И.С. 
+section .bss
+    count_string resb 30
+ 
+section .data
+    a db 1
+    b db 1
+    c db 1
+ 
+section .text
+    global _start
+ 
+_start:
+    mov byte [a], 1
+    mov byte [b], 1
+    mov byte [c], 1
+    ; R = ((a or (b or not a)) * b) << c
+    push rbp
+    mov rbp, rsp
+    push rcx
+    ; вычисление (b or not a)
+    movzx rax, byte [a]
+    not rax
+    movzx rcx, byte [b]
+    or rax, rcx
+ 
+    ; вычисление (a or (b or not a))
+    movzx rcx, byte [a]
+    or rax, rcx
+    ; умножение на b
+    movzx rax, byte [a]
+    mul byte [b]
+    ; сдвиг влево на c
+    movzx rcx, byte [c]
+    shl al, cl
+ 
+    pop rcx
+    pop rbp
+ 
+    mov rax, 60
+    xor rdi, rdi
+    syscall
+
+
+
+2 Задачи 2-го уровня.
+2.1 Написать процедуру сортировки по возрастанию массива однобайтных элементов. 
+Параметры: 
+RDI – указатель на массив элементов; 
+RSI – количество элементов в массиве. 
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+section .text
+global sort
+;in:
+;       rdi - Array
+;       rsi - low
+;       rdx - high
+;out:
+;       rax – p
+partition:
+        push rsi
+        push rdx
+        push r9
+        push r10
+ 
+        mov r10b, byte [rdi + rdx]      ; r10b - pivot
+ 
+        dec rsi
+        mov r9, rsi     ; i
+        inc rsi
+ 
+        ;dec rdx
+.loop:  ; j - rsi
+        cmp byte [rdi + rsi], r10b
+        jg .next
+ 
+        inc r9
+        mov al, byte [rdi + r9]
+        xchg al, byte [rdi + rsi]
+        mov byte [rdi + r9], al
+.next:
+        inc rsi
+        cmp rsi, rdx
+        jl .loop
+ 
+.ret:
+        ;inc rdx
+        inc r9
+        mov al, byte [rdi + r9]
+        xchg al, byte [rdi + rdx]
+        mov byte [rdi + r9], al
+ 
+        mov rax, r9
+        pop r10
+        pop r9
+        pop rdx
+        pop rsi
+        ret
+ 
+;in:
+;       rdi - Array
+;       rsi - low
+;       rdx - high
+quicksort:
+        push r10
+        push rsi
+        push rdx
+        push rax
+ 
+        cmp rsi, rdx
+        jge .ret
+        cmp rsi, 0
+        jl .ret
+ 
+        call partition  ; p - rax
+ 
+        mov r10, rdx
+        mov rdx, rax
+        dec rdx
+        call quicksort
+ 
+        mov rdx, r10
+        mov rsi, rax
+        inc rsi
+        call quicksort
+ 
+.ret:
+        pop rax
+        pop rdx
+        pop rsi
+        pop r10
+        ret
+ 
+;in:
+;'      rdi - array
+;       rsi - array_size
+sort:
+        push rsi
+        push rdx
+ 
+        dec rsi
+        mov rdx, rsi
+        xor rsi, rsi
+        call quicksort
+ 
+        pop rdx
+        pop rsi
+        ret
+2.2 Написать процедуру сортировки по убыванию массива однобайтных элементов. 
+Параметры: 
+RDI – указатель на массив элементов; 
+RSI – количество элементов в массиве. 
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+section .text
+global sort
+ 
+;in:
+;       rdi - Array
+;       rsi - low
+;       rdx - high
+;out:
+;       rax - p
+partition:
+        push rsi
+        push rdx
+        push r9
+        push r10
+ 
+        mov r10b, byte [rdi + rdx]      ; r10b - pivot
+ 
+        dec rsi
+        mov r9, rsi     ; i
+        inc rsi
+ 
+        ;dec rdx
+.loop:  ; j - rsi
+        cmp byte [rdi + rsi], r10b
+        Jle .next
+ 
+        inc r9
+        mov al, byte [rdi + r9]
+        xchg al, byte [rdi + rsi]
+        mov byte [rdi + r9], al
+.next:
+        inc rsi
+        cmp rsi, rdx
+        jl .loop
+ 
+.ret:
+        ;inc rdx
+        inc r9
+        mov al, byte [rdi + r9]
+        xchg al, byte [rdi + rdx]
+        mov byte [rdi + r9], al
+ 
+        mov rax, r9
+        pop r10
+        pop r9
+        pop rdx
+        pop rsi
+        ret
+ 
+;in:
+;       rdi - Array
+;       rsi - low
+;       rdx - high
+quicksort:
+        push r10
+        push rsi
+        push rdx
+        push rax
+ 
+        cmp rsi, rdx
+        jge .ret
+        cmp rsi, 0
+        jl .ret
+ 
+        call partition  ; p - rax
+ 
+        mov r10, rdx
+        mov rdx, rax
+        dec rdx
+        call quicksort
+ 
+        mov rdx, r10
+        mov rsi, rax
+        inc rsi
+        call quicksort
+ 
+.ret:
+        pop rax
+        pop rdx
+        pop rsi
+        pop r10
+        ret
+ 
+;in:
+;'      rdi - array
+;       rsi - array_size
+sort:
+        push rsi
+        push rdx
+ 
+        dec rsi
+        mov rdx, rsi
+        xor rsi, rsi
+        call quicksort
+ 
+        pop rdx
+        pop rsi
+        ret
+
+2.3 Написать процедуру бинарного поиска элемента в упорядоченном массиве. 
+Параметры: 
+RDI – указатель на массив; 
+RSI – количество элементов в массиве; 
+DL – искомое значение. 
+Возврат: RAX – адрес искомого элемента. 
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+binary_search:
+push rbp
+mov rbp, rsp
+ 
+push rsi
+push rdi
+push rdx
+ 
+.l:
+shr rsi, 1
+jz .ret
+sbb rax, rax
+neg rax
+ 
+cmp dl, byte [rdi + rsi]
+jg .right
+je .ret
+jmp .l
+ 
+.right:
+add rdi, rax
+lea rdi, [rdi + rsi]   
+jmp .l 
+.ret:
+cmp dl, byte [rdi + rsi]
+je .found
+
+xor rax, rax 
+pop rdx
+pop rdi
+pop rsi
+pop rbp
+ret
+.found:
+lea rax, [rdi + rsi]
+pop rdx
+pop rdi
+pop rsi
+pop rbp
+ret
+.not_found:
+mov rax, 0
+ 
+pop rdx
+pop rdi
+pop rsi
+pop rbp
+ret
+2.4 Дана полноцикловая подстановка. Реализовать процедуру перестановки текста по заданной подстановке (в том же самом массиве). 
+Параметры: 
+RDI – адрес массива текста; 
+RSI – адрес подстановки; 
+RDX – размер текста; 
+RCX – размер подстановки. 
+Решение от Токарев Д.А.:
+section .data
+    text db "Hello world", 0xa, 0
+    len equ $-text
+    lookup db 0, 9, 1, 8, 2, 5, 3, 6, 4, 1, 5, 3, 6, 10, 7, 4, 8, 0, 9, 2, 10, 7
+    len_lu equ 11
+
+section .text
+    global _start
+
+_start:
+    mov rdi, text
+    mov rsi, lookup
+    mov rdx, len
+    mov rcx, len_lu
+
+    call text_encryption
+
+    call print_text
+    jmp exit
+
+text_encryption:
+push rax
+push r8
+push r9
+push rcx
+push rbp
+mov rbp, rsp
+
+    mov rax, 0
+    mov al, byte [rsi]
+    mov r9, 0
+
+    null_for_lu:
+    mov r8, 0
+    for_lu:
+        inc rcx
+        cmp r9, rcx
+        je end_for_lu
+        dec rcx
+
+        cmp al, byte [rsi+r8*2]
+        je char_per
+        ret_char_per:
+
+
+    inc r8
+    cmp r8, rcx
+    je null_for_lu
+    jmp for_lu
+    end_for_lu:
+
+mov rsp, rbp
+pop rbp
+pop rcx
+pop r9
+pop r8
+pop rax
+ret
+
+char_per:
+push rcx
+push r10
+push r11
+    
+    mov r10b, byte [rsi+r8*2]
+    mov r11b, byte [rsi+r8*2+1]
+    mov cl, byte [rdi+r10]
+    mov al, ah
+    mov byte [rdi+r10], al
+    mov ah, cl
+    mov al, r11b
+    inc r9
+
+pop r11
+pop r10
+pop rcx
+jmp ret_char_per
+
+print_text:
+push rax
+push rbx
+push rcx
+push rdx
+
+    mov rax, 4
+    mov rbx, 1
+    mov rcx, text
+    mov rdx, len
+    int 0x80
+
+pop rdx
+pop rcx
+pop rbx
+pop rax
+ret
+
+exit:
+    mov eax, 60
+    xor edi, edi
+    syscall
+
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+
+2.5 Написать процедуру вычисления числа сочетаний из n по k. 
+Параметры: 
+RDI – n; 
+RSI – k; 
+Возврат: EAX – число сочетаний. 
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+fac:
+push rbp
+mov rbp, rsp
+test rdi, rdi
+jz .null
+push rcx
+mov rax, rdi
+mov rcx, 1
+.l:
+mul rcx
+inc rcx
+cmp rcx, rdi
+jl .l
+.ret:
+pop rcx
+pop rbp
+ret
+
+.null:
+mov rax, 1
+pop rbp
+ret
+ 
+comb:
+push rbp
+mov rbp, rsp
+cmp rdi, rsi
+jge .m
+mov rax, 0
+pop rbp
+ret
+.m:
+push rbx
+push rcx
+push rsi
+push rdi
+call fac	; rax - n!
+mov rbx, rax
+sub rdi, rsi	; rax - (n - k)!
+call fac
+mov rcx, rax
+mov rdi, rsi	; rax - k!
+call fac
+mul rcx		; rax - k! * (n - k)!
+xchg rbx, rax
+div rbx
+pop rdi
+pop rsi
+pop rcx
+pop rbx
+pop rbp
+ret
+2.6 Написать процедуру вычисления числа размещений из n по k. 
+Параметры: 
+RDI – n; 
+RSI – k; 
+Возврат: EAX – число размещений. 
+Решение от ФИО: Кудрявцев Вячеслав Николаевич
+; RDI - n
+; RSI - k
+; A^k_n = n * (n - 1) * ... * (n - k + 1)
+; return EAX
+func:
+push rbp
+mov rbp, rsp
+push rcx
+push rdx
+push rdi
+
+mov rcx, rdi ; rcx = n
+mov rax, 1    ; rax = 1
+sub rdi, rsi   ; rdi = n – k
+.f:
+cmp rcx, rdi 
+je .end
+mul rcx        ; rax = rax * rcx
+dec rcx        
+jmp .f
+.end:
+pop rdi
+pop rdx
+pop rcx
+pop rbp
+ret
+
+Пускалка
+section .bss
+    n resd 1
+    k resd 1
+    string_out resb 64
+ 
+section .text
+global _start
+ 
+_start:
+mov rdi, 10
+mov rsi, 4
+call func 
+ 
+mov rdi, rax
+ 
+call itoa
+ 
+mov rax, 1
+mov rdi, 1
+mov rsi, string_out
+mov rdx, 64
+syscall
+ 
+mov rax, 60
+xor rdi, rdi
+syscall
+
+itoa:
+push r8
+mov r8, 10
+    mov byte [count_string + 29], 0x0a
+    mov rcx, count_string + 28
+    mov r9, count_string + 30
+    mov rax, rdi
+.next:
+    mov rdx, 0
+    div r8
+    add dl, '0'
+    cmp dl, '9'
+    jbe .m1
+    add dl, 'A'-'0'-10
+.m1:
+    mov [rcx], dl
+    cmp rax, 0
+    je .end
+    dec rcx
+    jmp .next
+.end:
+pop r8
+    sub r9, rcx
+    mov rdx, r9
+    ret	
+
+Запуск и компиляция
+
+2.7 Написать процедуру нахождения всех циклов подстановки. 
+Параметры: 
+RDI – адрес подстановки; 
+RSI – степень подстановки; 
+RDX – адрес результата. 
+Решение от Осипов Д.Д.:
+Пример представления в памяти циклов (1 5 3)(2 4): 1, 5, 3, 1, 2, 4, 2
+section .bss
+    result resb 20
+
+section .data
+    ;lookup db 1, 3, 2, 4, 3, 5, 4, 1, 5, 2, 0
+    lookup db 1, 5, 2, 4, 3, 1, 4, 2, 5, 3, 0
+    ;lookup db 2, 4, 5, 3, 3, 1, 1, 5, 4, 2, 0
+    ;lookup db 1, 1, 0
+
+    len equ 5
+
+
+section .text
+    global _start
+
+_start:
+    mov rdi, lookup
+    mov rsi, len
+    mov rdx, result
+    call find_cycle
+
+    mov rax, rdx
+    call print_lu
+
+
+    jmp exit
+
+find_cycle:
+push rax
+push rcx
+push r8
+push r9
+push rdi
+push rdx
+push rbp
+mov rbp, rsp
+
+    mov r8, 0 ; Счетчик использованных элементов в result
+    mov r9, 0 ; Длина result
+
+    mov rcx, 0 
+    for:
+        mov rax, rdi
+        add rax, rcx ; находим "верхний" элемент подстановки
+        call check_in_res
+        cmp rax, -1 
+        je not_cal_f_1c
+        call f_1c
+        not_cal_f_1c:
+
+    add rcx, 2
+    cmp r8, rsi ; если все элементы мы использовали, то заканчиваем этот кордебалет
+    jne for    
+
+mov rsp, rbp
+pop rbp
+pop rdx
+pop rdi
+pop r9
+pop r8
+pop rcx
+pop rax
+ret
+
+check_in_res: ; функция проверки "есть ли элемент в циклах или нет"
+push rbx
+push rcx
+    cmp r9, 0 ; если result пуст, то точно нет
+    je end_check
+
+    mov rcx, 0
+    for_check:
+
+        mov bl, byte [rax]
+        cmp byte [rdx+rcx], bl
+        je find_in_res ; мы его нашли, значит делаем rax = -1
+
+    inc rcx
+    cmp rcx, r9
+    jne for_check
+
+end_check:
+pop rcx
+pop rbx
+ret
+
+find_in_res:
+    mov rax, -1
+    jmp end_check
+
+f_1c: ; функция построения цикла
+push rax
+push rbx
+push rcx
+    mov bh, byte[rax] ; первый элемент
+    mov byte [rdx], bh
+    inc r9
+    inc r8
+    inc rdx
+    mov bl, byte[rax+1] ; образ первого элемента
+    mov byte [rdx], bl
+    inc r9
+    cmp bl, bh ; если они равны, то получается длина цикла 1
+    je end_f_1c
+    mov ah, bh
+    mov al, bl ; образы
+    inc rdx
+
+    null_for_l1:
+    mov rcx, 0 ; запускаем счетчик rcx по модулю rsi
+    for_l1:
+
+        cmp byte [rdi+rcx+rcx], al ; "Мы нашли куда отправляет нас предыдущий образ?"
+        je i_find
+        ret_i_find:
+
+        cmp ah, al
+        je end_for_l1
+
+    inc rcx
+    cmp rcx, rsi
+    je null_for_l1
+    jmp for_l1
+    end_for_l1:
+    mov byte [rdx+1], ah ; дозаписываем первый элемент (цикл замкнулся)
+
+end_f_1c:
+pop rcx
+pop rbx
+pop rax
+ret
+
+i_find:
+    mov al, byte [rdi+rcx+rcx+1] ; меняем образ на следующий
+    mov byte [rdx], al ; записываем элемент в result
+    inc rdx
+    inc r8
+    inc r9
+
+    jmp ret_i_find
+
+print_lu:
+    mov rdx, 0
+    for_print:
+
+        cmp byte [rax+rdx], 0
+        je end_for_print
+
+        mov rcx, rax
+        add rcx, rdx
+        add byte [rcx], 0x30
+        call print_symbol
+        sub byte [rcx], 0x30
+
+    inc rdx
+    jmp for_print
+    end_for_print:
+ret
+
+print_symbol:
+push rax
+push rbx
+push rdx
+    mov rax, 4
+    mov rbx, 1
+    mov rdx, 1
+    int 0x80
+pop rdx
+pop rbx
+pop rax
+ret
+
+exit:
+    mov eax, 60
+    xor edi, edi
+    syscall
+
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+
+2.8 Написать процедуру порождения следующего в лексикографическом порядке сочетания для заданного сочетания из n по k. 
+Параметры: 
+RDI – адрес текущего сочетания; 
+RSI – n; 
+RDX – k; 
+Возврат: RSI – новое сочетание; RAX=0 – OK; RAX=-1 – текущее сочетание максимальное.
+Решение от ФИО: Ковалев Артем Сергеевич
+Алгоритм взят отсюда (Перебор сочетаний): 
+https://algocode.ru/page/c-22-generating/
+
+section .data
+stroka db "345", 0
+ 
+section .text
+global _start
+_start:
+mov rsi, 5
+mov rdx, 3
+mov rdi, stroka
+call next_combination 
+call exit
+ 
+next_combination:
+push rbp
+mov rbp, rsp
+push r8
+push rsi 
+push rcx
+push rbx 
+push r9 
+ 
+xor rcx, rcx 
+mov r9, rdx 
+xor rax, rax
+ 
+.loop:
+cmp r9, 0
+je .finish
+dec r9 
+mov bl, sil
+sub bl, dl
+add bl, al
+add bl, 48 
+cmp byte[rdi + r9], bl
+jg .loop 
+inc byte[rdi+r9]
+mov rcx, r9
+inc rcx
+.jloop: 
+cmp rcx, rdx	
+jge .end 
+mov r8b, byte[rdi + rcx - 1]
+mov byte[rdi + rcx], r8b
+inc byte[rdi + rcx]
+inc rcx
+jmp .jloop 	
+ 
+ 
+.finish:
+mov rax, -1
+ 
+.end:
+mov rsi, rdi 
+pop r9 
+pop rbx 
+pop rcx
+pop rsi
+pop r8
+pop rbp 
+ret
+ 
+exit:
+mov rax, 60
+syscall
+
+nasm –f elf_x86_64 task.asm
+ld -m  elf_x86_64 task.o
+2.9 Объяснить, что делает данная процедура
+push rbp
+mov rbp, rsp
+mov rax, rdi
+sub rsi, rax
+sbb rcx, rcx
+and rcx, rsi
+add rax, rcx
+pop rbp
+ret
+
+Как можно реализовать данные действия по-другому?
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+Данная процедура возвращает наименьшее из чисел одного знака и наибольшее из чисел с разными знаками.
+push rbp			; function prologue
+mov rbp, rsp		; ...
+mov rax, rdi		; rax = rdi
+sub rsi, rax		; rsi = rsi – rax = rsi – rdi (CF is set if rdi 											> rsi)
+sbb rcx, rcx		; rcx = rcx – rcx - CF
+and rcx, rsi		; rcx = rcx & rsi => rcx is difference
+; between rdi and rsi
+add rax, rcx		; rax = rax + rcx
+pop rbp			; clear the stack
+ret
+Как по-другому: 
+push rbp
+mov rbp, rsp
+cmp rdi, rsi
+jc .f
+mov rax, rsi
+pop rbp
+ret
+.f:
+mov rax, rdi
+pop rbp
+ret
+2.10 Объяснить, что делает данная процедура
+push rbp
+mov rbp, rsp
+mov rax, rdi ;[ebp+8] 
+mov rbx, rsi ;[ebp+12] 
+mov rcx, rdx ;[ebp+16] 
+cmp eax, 1 
+sbb eax, eax 
+and ecx, eax 
+xor eax, -1 
+and eax, ebx 
+or eax, ecx 
+pop rbp 
+ret
+
+Как можно реализовать данные действия по-другому?
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+К чему здесь комментарии - не знаю. Единственное предположение, что МВ из какого-то дизассемблера код взял. Тут какая-то структура типа: 
+struct {
+int flag;
+int num1;
+int num2;
+};
+Если eax = 0, то возвращается edx, иначе esi.
+push rbp
+mov rbp, rsp
+test edi, edi
+jz .edx
+mov eax, esi
+pop rbp
+ret
+.edx:
+mov eax, edx
+pop rbp
+ret
+2.11 Объяснить, что делает данная процедура
+push rbp 
+mov rbp, rsp 
+xchg rdx, rdi 
+mov bx, si 
+xor bh, bl 
+%rept 3 
+shl dl,1 
+sbb al, al 
+and al, bh 
+xor al, bl 
+shl eax,8 
+%endrep 
+shl dl,1 
+sbb al, al 
+and al, bh 
+xor al, bl 
+bswap eax 
+stosd 
+pop rbp 
+ret
+
+Как можно реализовать действия по-другому? 
+Решение от Алексеевой А. О.
+push rbp           ; rbp -> stack
+mov rbp, rsp    ; rbp = rsp (тек. Знач. стека)
+xchg rdx, rdi    ; меняет знач регистров rdx and rdi
+mov bx, si        ; знач. Bx = знач si
+xor bh, bl         ; исключающее или двух регистров
+%rept 3 	      ; макрос, выполняется 3 раза
+shl dl,1 	      ; сдвиг влево на 1
+sbb al, al      ; вычитание с заемом из AL. Заем из флага переноса.
+and al, bh         ; логическое и двух регистров
+xor al, bl  
+shl eax,8         ; сдвиг влево на 8
+%endrep 
+shl dl,1            : сдвиг влево на 1
+sbb al, al 
+and al, bh 
+xor al, bl 
+bswap eax  ;Меняет местами байты в регистре EAX.
+stosd      ; Записывает значение из регистра EAX в адрес, на который указывает текущий индекс в регистре RDI
+pop rbp      ; Восстанавливает предыдущее значение указателя базы стека из стека.
+ret
+Эта процедура выполняет различные операции с регистрами и сохраняет результат в память.
+    push rbp
+    mov rbp, rsp
+    xchg rdx, rdi
+    mov bx, si
+    xor bh, bl
+ 
+    rept_block:
+        shl dl, 1
+        sbb al, al
+        and al, bh
+        xor al, bl
+        shl eax, 8
+        dec dword [rbp - 4]  
+        jnz rept_block       
+ 
+    shl dl, 1
+    sbb al, al
+    and al, bh
+    xor al, bl
+    bswap eax
+    mov  [rdi], eax (stosd)
+    add rdi, 4
+    pop rbp
+    ret
+
+
+2.12 Объяснить, что делает данная процедура
+push rbp 
+mov rbp, rsp 
+mov rax, rdi ;[ebp+8] 
+mov rcx, rsi ;[ebp+12] 
+and al,0Fh 
+cmp al,10 
+cmc 
+sbb bl, bl 
+and bl,10 
+sub al, bl 
+pop bp 
+ret
+
+Как можно реализовать данные действия по-другому?
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+Зачем здесь rsi - не знаю. Почему SIGSEGV – pop rbp должно быть.
+al = (dil % 16) % 10
+push rbp
+mov rbp, rsp
+push rax
+xor rax, rax
+mov cl, 10
+mov al, dil
+and al, 0xf
+div cl
+mov dl, ah
+pop rax
+mov al, dl
+pop rbp
+ret
+2.13 Даны две последовательности . Написать процедуру поэлементного сложения двух последовательностей по модулю 26, не используя команды переходов и деления. 
+Параметры: 
+RDI – адрес первой последовательности; 
+RSI – адрес второй последовательности; 
+RDX – адрес результата; 
+RCX – размер последовательности
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+;in:	rdi - frst
+;	rsi - sec
+;	rdx - res
+;	rcx - size
+add:
+push rbp
+mov rbp, rsp
+
+push rax
+push rbx
+.l:
+mov al, byte [rdi + rcx - 1]
+add al, byte [rsi + rcx - 1]
+
+sub al, 26
+sbb bl, bl
+and bl, 26
+add al, bl
+mov byte [rdx + rcx - 1], al
+ 
+loop .l
+ 
+pop rbx
+pop rax
+pop rbp
+ret
+2.14 Написать процедуру нумерации элементов массива 
+Параметры: 
+RDI – адрес массива; 
+RSI – адрес результата;
+RDX – размер массива
+Решение от Осипов Д.Д.:
+section .data
+    arr db 0, 0, 1, 2, 0, 1, 1, 2, 4
+    len equ 9
+    next_str db 0xa 
+
+section .bss
+    arr_res resb 10
+
+section .text
+    global _start
+
+_start:
+    mov rdi, arr
+    mov rsi, arr_res
+    mov rdx, len
+
+    call num_arr
+    call print_arr
+
+    jmp exit
+
+num_arr:
+push r8
+push rcx
+push rax
+push rbp
+mov rbp, rsp
+
+    mov r8, 0
+    mov rcx, 0
+    for_arr:
+        mov rax, rdi
+        add rax, rcx
+        call check_in_past
+        cmp rax, -1
+        jne write_num
+        ret_write_num:
+
+    inc rcx
+    cmp rcx, rdx
+    jne for_arr
+
+mov rsp, rbp
+pop rbp
+pop rax
+pop rcx
+pop r8
+ret
+
+write_num:
+push rax
+push rcx
+
+    mov al, byte [rax]
+    mov rcx, 0
+    for_write:
+
+        cmp al, byte [rdi+rcx]
+        je write
+        ret_write:
+
+    inc rcx
+    cmp rcx, rdx
+    jne for_write
+
+pop rcx
+pop rax
+jmp ret_write_num
+
+write:
+    mov byte [rsi+rcx], r8b
+    inc r8
+    ;call print_arr
+jmp ret_write
+
+check_in_past:
+push rdx
+push rbx
+
+    cmp rcx, 0
+    je end_check
+
+    mov rdx, 0
+    for_check:
+        mov bl, byte [rdi+rdx]
+        cmp bl, byte[rax]
+        je check_find
+
+    inc rdx
+    cmp rcx, rdx
+    jne for_check
+
+    end_check:
+
+pop rbx
+pop rdx
+ret
+
+check_find:
+    mov rax, -1
+    jmp end_check
+
+print_arr:
+push rax
+push rbx
+push rcx
+push rdx
+push rbp
+mov rbp, rsp
+
+    mov rcx, 0
+    for:
+        mov rax, rcx
+        push rcx
+            mov rcx, arr_res
+            add rcx, rax
+            add byte [rcx], 0x30
+            mov rax, 4
+            mov rbx, 1
+            mov rdx, 1
+            int 0x80
+            sub byte [rcx], 0x30
+        pop rcx
+
+    inc rcx
+    cmp rcx, len
+    jne for
+
+    mov rax, 4
+    mov rbx, 1
+    mov rcx, next_str
+    mov rdx, 1
+    int 0x80
+
+mov rsp, rbp
+pop rbp
+pop rdx
+pop rcx
+pop rbx
+pop rax
+ret
+
+exit:
+    mov eax, 60
+    xor edi, edi
+    syscall
+
+Запуск:
+nasm -f elf64 1_4.asm
+ld 1_4.asm -o
+./a.out
+2.15 Написать п	роцедуру, реализующую один такт ЛРП с характеристическим многочленом
+
+Что-то типо такого должно быть по идее, но как-то есть чувство недосказанности в задании.
+;in:	rdi - 	prev_state
+;out:	al - bit
+;	rdi - new_state
+lsfr:	;	x^8 + x^7 + x^5 + x^3 + 1 = 0b110101001
+push rbp
+mov rbp, rsp
+ 
+push rbx
+push rcx
+
+xor rbx, rbx
+xor rcx, rcx
+xor al, al
+
+mov rbx, rdi
+and rbx, 0b10101001
+setp cl
+shr rdi, 1
+setc al
+shl rcx, 7	;6
+or rdi, rcx
+ 
+ 
+pop rcx
+pop rbx
+pop rbp
+ret
+2.16 Написать процедуру, реализующую умножение двух однобайтовых значений (без знака) используя команды сдвига и сложения 
+Параметры: 
+RDI – первое число 
+RSI – второе число 
+Возврат: CH – результат…
+Решение от ФИО: Навощик Кирилл Алексеевич (@shaw3rma для вопросов, если такие будут)
+push rbp
+mov rbp, rsp
+xor ch, ch
+%rep 8
+shr sil, 1
+sbb al, al
+and al, dil
+add ch, al
+shl dil, 1
+%endrep
+pop rbp
+ret
+
+
+Как скомпилировать программу? Как писать запускалки? И показать Соболеву, что происходит вообще.
+ 
+Пусть ваша прока называется: proc. Она принимает следующие параметры: rdi - число, rsi - адрес входного масива, rdx - адрес выходного массива. Пусть она что-то запишет в массив rdx, и вернёт что-то в rax.
+ 
+Файл: main.asm
+ 
+1) Reqs: ld (линковщик), nasm (ассемблер), gdb
+ 
+Компилируется легко: 
+nasm -g dwarf -f elf64 main.asm     # эта штука выплюнет main.o 
+ld main.o                           # эта штука выплюнет a.out (нужный вам бинарь)
+ 
+2) Пусть в main.asm определена процедура proc. Тогда типикал запускалка выглядит так:
+section .text
+    global _start
+ 
+proc:       <--- ваша процедура
+    ;
+    ;много кода
+    ;
+ 
+    
+; Наличие процедуры _start обязательно в данном случае
+_start:
+    mov rdi, 0x1234     ; rdi - входное число для процедуры
+    mov rsi, array      ; rsi - адрес входного массив для процедуры
+    mov rdx, res_array  ; rdx - адрес выходного массива
+    call proc   ; вызовем проку
+ 
+ 
+    mov rax, 60     ; эти две строки обязательны, так как без них получите сегфолт
+    syscall
+    
+section .data
+    array: db 0x1, 0x2, 0x3, 0x4        ; массив байтовых элементов
+                                        ; если бы были слова или более то было бы либо dw, либо dd, либо dq
+ 
+section .bss
+    res_array: resb 4                   ; выходной массив изначально неинициализирован, поэтому для него резервируем памяти сколько потребуется (инструкция resb (также есть ещё resw, resd и т.д, но не советую хд))д, в данном случае зарезервировали 4 байта под массивчик выходной
+    
+Вот и всё. Запускалка готова.
+ 
+3) Показываем Соболеву, что происходит в проге.
+Есть много вариантов, можно не париться особо и всё голыми байтами выплёвывать в stdout (поток 1), но я предпочитаю через gdb показывать.
+ 
+Допустим вы скомпилировали программу. У вас есть бинарь - файл, условно, a.out.
+gdb ./a.out 
+ 
+В gdb:
+la asm 
+la r
+b _start
+r
+ni      # повторяете до вызова процедуры, т.е. до инструкции вида call proc
+# настало время показать ему состояние переменных перед выполнением процедуры
+i r rax
+# помним что в rdi у нас число
+# rsi - адрес входного массива
+# rdx - выходного, изначально 0 заполнен
+x/4xb $rsi      # 4 - размер массива в байтах, если бы был массив слов то было бы, например x/4xw $rsi
+ni  # функция отработала
+i r rax
+x/4xb $rsi      # обработанный выходной массив
+quit
+ 
+Если попросит показать работу самой функции поэтапно:
+la asm 
+la r
+b _start
+b proc
+r
+c
+ni  # сколько-то инструкций показываете
+...
+quit
